@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Sparkles, Clock, Leaf, TrendingDown, ChefHat, Users, Heart, Flame, X, User } from "lucide-react";
 
 interface Recipe {
@@ -11,6 +11,139 @@ interface Recipe {
   ingredients: string[];
   steps: string[];
 }
+
+type RecipeTemplate = Omit<Recipe, "fav"> & { filterTags: string[] };
+
+const recipePool: RecipeTemplate[] = [
+  {
+    title: "Омлет со шпинатом и фетой",
+    time: "10 мин", calories: "290 ккал", tags: ["Быстро", "ПП"],
+    filterTags: ["До 20 минут", "Без мяса", "Низкокалорийный", "ПП-обед", "Из того, что есть"],
+    image: "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400",
+    ingredients: ["3 яйца", "100г шпината", "60г феты", "1 ст.л. оливкового масла", "Соль, перец", "Зелёный лук"],
+    steps: ["Взбейте яйца с солью и перцем.", "Обжарьте шпинат на масле 1 минуту.", "Влейте яйца, распределите шпинат.", "Когда края схватятся, добавьте фету и сложите пополам."]
+  },
+  {
+    title: "Тост с лососем и авокадо",
+    time: "10 мин", calories: "310 ккал", tags: ["Быстро", "ПП"],
+    filterTags: ["До 20 минут", "Низкокалорийный", "ПП-обед", "Для гостей"],
+    image: "https://images.unsplash.com/photo-1497888329096-51c27beff665?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400",
+    ingredients: ["2 ломтика цельнозернового хлеба", "100г слабосолёного лосося", "1 авокадо", "Лимонный сок", "Каперсы", "Укроп"],
+    steps: ["Подрумяньте хлеб в тостере.", "Разомните авокадо вилкой, добавьте лимонный сок.", "Намажьте авокадо на тосты.", "Выложите лосось, украсьте каперсами и укропом."]
+  },
+  {
+    title: "Греческий салат с орегано",
+    time: "15 мин", calories: "230 ккал", tags: ["Лёгкое", "ПП"],
+    filterTags: ["До 20 минут", "Без мяса", "Низкокалорийный", "ПП-обед", "Для гостей"],
+    image: "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400",
+    ingredients: ["2 помидора", "1 огурец", "1 болгарский перец", "100г феты", "50г маслин", "Орегано", "3 ст.л. оливкового масла"],
+    steps: ["Нарежьте овощи крупными кусками.", "Выложите в миску с маслинами.", "Добавьте кубики феты.", "Полейте маслом, посыпьте орегано."]
+  },
+  {
+    title: "Карри с нутом и шпинатом",
+    time: "25 мин", calories: "370 ккал", tags: ["Вегетарианское", "Сытно"],
+    filterTags: ["Без мяса", "ПП-обед", "Для гостей"],
+    image: "https://images.unsplash.com/photo-1585937421612-70a008356fbe?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400",
+    ingredients: ["400г консервированного нута", "200г шпината", "400мл кокосового молока", "2 ст.л. карри-пасты", "1 луковица", "3 зубчика чеснока", "Рис для подачи"],
+    steps: ["Обжарьте лук и чеснок 3 минуты.", "Добавьте карри-пасту, жарьте ещё минуту.", "Влейте кокосовое молоко, добавьте нут.", "Тушите 15 минут, добавьте шпинат и подавайте с рисом."]
+  },
+  {
+    title: "Крем-суп из тыквы",
+    time: "30 мин", calories: "220 ккал", tags: ["Лёгкое", "Вегетарианское"],
+    filterTags: ["Без мяса", "Низкокалорийный", "ПП-обед", "Для гостей"],
+    image: "https://images.unsplash.com/photo-1547592180-85f173990554?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400",
+    ingredients: ["500г тыквы", "1 луковица", "2 зубчика чеснока", "500мл овощного бульона", "100мл сливок 20%", "Имбирь молотый", "Тыквенные семечки"],
+    steps: ["Нарежьте тыкву и лук, запеките 20 минут при 200°C.", "Обжарьте чеснок с имбирём.", "Пробейте тыкву с бульоном до гладкости.", "Добавьте сливки, прогрейте, подавайте с семечками."]
+  },
+  {
+    title: "Куриный стир-фрай с лапшой",
+    time: "20 мин", calories: "450 ккал", tags: ["Быстро", "Сытно"],
+    filterTags: ["До 20 минут", "Из того, что есть"],
+    image: "https://images.unsplash.com/photo-1586190848861-99aa4a171e90?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80w=400",
+    ingredients: ["250г куриного филе", "150г яичной лапши", "1 морковь", "1 болгарский перец", "3 ст.л. соевого соуса", "Кунжутное масло", "Зелёный лук"],
+    steps: ["Отварите лапшу по инструкции.", "Нарежьте курицу полосками, обжарьте 5 минут.", "Добавьте овощи, жарьте ещё 3 минуты.", "Смешайте с лапшой, полейте соевым соусом и кунжутным маслом."]
+  },
+  {
+    title: "Лосось с запечёнными овощами",
+    time: "25 мин", calories: "410 ккал", tags: ["ПП", "Для гостей"],
+    filterTags: ["Низкокалорийный", "ПП-обед", "Для гостей"],
+    image: "https://images.unsplash.com/photo-1467003909585-2f8a72700288?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400",
+    ingredients: ["2 стейка лосося", "1 цукини", "1 болгарский перец", "Cherry-помидоры", "Лимон", "Оливковое масло", "Прованские травы"],
+    steps: ["Нарежьте овощи, выложите на противень, полейте маслом.", "Запекайте овощи 10 минут при 200°C.", "Добавьте лосось, полейте лимонным соком.", "Запекайте ещё 12-15 минут до готовности."]
+  },
+  {
+    title: "Ризотто с грибами",
+    time: "30 мин", calories: "430 ккал", tags: ["Вегетарианское", "Для гостей"],
+    filterTags: ["Без мяса", "Для гостей"],
+    image: "https://images.unsplash.com/photo-1476124369491-e7addf5db371?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400",
+    ingredients: ["200г риса арборио", "300г шампиньонов", "1 луковица", "100мл белого вина", "700мл горячего бульона", "50г пармезана", "2 ст.л. масла"],
+    steps: ["Обжарьте лук, добавьте грибы, жарьте 5 минут.", "Добавьте рис, влейте вино и выпарите.", "Добавляйте бульон по половнику, помешивая 18 минут.", "Снимите с огня, добавьте пармезан и масло."]
+  },
+  {
+    title: "Салат с тунцом и фасолью",
+    time: "15 мин", calories: "310 ккал", tags: ["Быстро", "Белок"],
+    filterTags: ["До 20 минут", "Низкокалорийный", "ПП-обед", "Из того, что есть"],
+    image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400",
+    ingredients: ["1 банка тунца в собственном соку", "400г консервированной белой фасоли", "1 луковица", "2 помидора", "Петрушка", "2 ст.л. оливкового масла", "Лимонный сок"],
+    steps: ["Слейте жидкость с тунца и фасоли.", "Нарежьте лук и помидоры.", "Смешайте все ингредиенты.", "Заправьте маслом и лимонным соком."]
+  },
+  {
+    title: "Паста с томатами и базиликом",
+    time: "20 мин", calories: "420 ккал", tags: ["Быстро", "Вегетарианское"],
+    filterTags: ["До 20 минут", "Без мяса", "Из того, что есть"],
+    image: "https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400",
+    ingredients: ["200г спагетти", "400г черри-томатов", "4 зубчика чеснока", "Свежий базилик", "4 ст.л. оливкового масла", "50г пармезана", "Соль, перец"],
+    steps: ["Отварите пасту аль денте.", "Обжарьте чеснок в масле, добавьте томаты.", "Тушите томаты 10 минут до мягкости.", "Смешайте с пастой, добавьте базилик и пармезан."]
+  },
+  {
+    title: "Чечевичный суп с куркумой",
+    time: "30 мин", calories: "260 ккал", tags: ["ПП", "Вегетарианское"],
+    filterTags: ["Без мяса", "Низкокалорийный", "ПП-обед"],
+    image: "https://images.unsplash.com/photo-1547592180-85f173990554?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400",
+    ingredients: ["200г красной чечевицы", "1 луковица", "2 моркови", "1 ч.л. куркумы", "1 ч.л. зиры", "1л овощного бульона", "Лимонный сок"],
+    steps: ["Обжарьте лук и морковь с специями 5 минут.", "Добавьте промытую чечевицу и бульон.", "Варите 20 минут до мягкости.", "Пробейте блендером, добавьте лимонный сок по вкусу."]
+  },
+  {
+    title: "Говяжий боул с булгуром",
+    time: "25 мин", calories: "520 ккал", tags: ["Сытно", "Белок"],
+    filterTags: ["Для гостей"],
+    image: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400",
+    ingredients: ["200г говяжьего фарша", "150г булгура", "1 луковица", "2 зубчика чеснока", "1 ч.л. паприки", "Соевый соус", "Свежая петрушка"],
+    steps: ["Отварите булгур 15 минут.", "Обжарьте лук и чеснок, добавьте фарш.", "Жарьте фарш 7-10 минут, добавьте специи и соевый соус.", "Подавайте на булгуре, посыпьте петрушкой."]
+  },
+  {
+    title: "Запечённая курица с картофелем",
+    time: "35 мин", calories: "490 ккал", tags: ["Сытно", "Классика"],
+    filterTags: ["Для гостей", "Из того, что есть"],
+    image: "https://images.unsplash.com/photo-1565895405140-6b9830a88c19?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400",
+    ingredients: ["4 куриных бедра", "500г картофеля", "Чеснок", "Розмарин", "Оливковое масло", "Паприка", "Соль, перец"],
+    steps: ["Нарежьте картофель дольками, смешайте с маслом и специями.", "Натрите курицу паприкой, солью и чесноком.", "Выложите всё на противень.", "Запекайте 30-35 минут при 200°C."]
+  },
+  {
+    title: "Авокадо-тост с яйцом пашот",
+    time: "15 мин", calories: "350 ккал", tags: ["Быстро", "ПП"],
+    filterTags: ["До 20 минут", "Без мяса", "ПП-обед", "Из того, что есть"],
+    image: "https://images.unsplash.com/photo-1473093226795-af9932fe5856?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400",
+    ingredients: ["2 ломтика хлеба на закваске", "1 спелый авокадо", "2 яйца", "Лимонный сок", "Хлопья чили", "Соль", "Микрогрин для подачи"],
+    steps: ["Подрумяньте хлеб в тостере.", "Разомните авокадо, добавьте лимонный сок и соль.", "Сварите яйца пашот: 3 минуты в воде с уксусом.", "Намажьте авокадо на тост, положите яйца, посыпьте чили."]
+  },
+  {
+    title: "Мисо-суп с тофу и водорослями",
+    time: "15 мин", calories: "180 ккал", tags: ["Лёгкое", "Азиатское"],
+    filterTags: ["До 20 минут", "Без мяса", "Низкокалорийный", "ПП-обед"],
+    image: "https://images.unsplash.com/photo-1563245372-f21724e3856d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400",
+    ingredients: ["800мл воды", "3 ст.л. мисо-пасты", "150г шёлкового тофу", "Водоросли вакаме", "2 ст.л. соевого соуса", "Зелёный лук", "Кунжут"],
+    steps: ["Вскипятите воду, немного остудите.", "Растворите мисо-пасту в половнике воды, влейте в кастрюлю.", "Добавьте нарезанный тофу и размоченные водоросли.", "Не кипятите. Подавайте с зелёным луком и кунжутом."]
+  },
+  {
+    title: "Буррито с курицей и фасолью",
+    time: "20 мин", calories: "540 ккал", tags: ["Сытно", "Быстро"],
+    filterTags: ["До 20 минут", "Из того, что есть", "Для гостей"],
+    image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400",
+    ingredients: ["2 лепёшки тортилья", "200г куриного филе", "200г консервированной фасоли", "Сыр чеддер", "Сметана", "Сальса", "Листья салата"],
+    steps: ["Нарежьте и обжарьте курицу с куркумой и паприкой.", "Разогрейте фасоль, слегка разомните.", "Выложите начинку на тортилью.", "Сверните буррито, можно поджарить на сухой сковороде."]
+  },
+];
 
 const initialRecipes: Recipe[] = [
   {
@@ -65,7 +198,7 @@ export default function App() {
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [error, setError] = useState("");
+  const usedIndices = useRef<Set<number>>(new Set());
 
   const toggleFilter = (label: string) => {
     setActiveFilters(prev =>
@@ -78,35 +211,31 @@ export default function App() {
     setRecipes(prev => prev.map((r, i) => i === index ? { ...r, fav: !r.fav } : r));
   };
 
-  const generateRecipe = async () => {
+  const generateRecipe = () => {
     setGenerating(true);
-    setError("");
-    const filters = activeFilters.length ? `Учти фильтры: ${activeFilters.join(", ")}.` : "";
-    try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          messages: [{
-            role: "user",
-            content: `Придумай один оригинальный рецепт обеда. ${filters} Ответь ТОЛЬКО JSON без пояснений и markdown:
-{"title":"название","time":"X мин","calories":"X ккал","tags":["тег1","тег2"],"image":"https://images.unsplash.com/photo-1546069901-ba9599a7e63c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400","ingredients":["ингредиент 1","ингредиент 2","ингредиент 3","ингредиент 4","ингредиент 5"],"steps":["шаг 1","шаг 2","шаг 3","шаг 4"]}`
-          }]
-        })
-      });
-      const data = await res.json();
-      const text = data.content.map((c: { text?: string }) => c.text || "").join("");
-      const clean = text.replace(/```json|```/g, "").trim();
-      const recipe: Recipe = { ...JSON.parse(clean), fav: false };
-      setRecipes(prev => [recipe, ...prev]);
-    } catch {
-      setError("Не удалось сгенерировать рецепт. Попробуйте снова.");
-      setTimeout(() => setError(""), 3000);
-    } finally {
+
+    setTimeout(() => {
+      let candidates = recipePool
+        .map((r, i) => ({ r, i }))
+        .filter(({ i }) => !usedIndices.current.has(i));
+
+      if (activeFilters.length > 0) {
+        const filtered = candidates.filter(({ r }) =>
+          activeFilters.every(f => r.filterTags.includes(f))
+        );
+        if (filtered.length > 0) candidates = filtered;
+      }
+
+      if (candidates.length === 0) {
+        usedIndices.current.clear();
+        candidates = recipePool.map((r, i) => ({ r, i }));
+      }
+
+      const { r, i } = candidates[Math.floor(Math.random() * candidates.length)];
+      usedIndices.current.add(i);
+      setRecipes(prev => [{ ...r, fav: false }, ...prev]);
       setGenerating(false);
-    }
+    }, 1200);
   };
 
   return (
@@ -139,10 +268,9 @@ export default function App() {
           disabled={generating}
           className="bg-[#E8672A] disabled:bg-gray-300 text-white px-9 py-4 rounded-full text-lg font-medium inline-flex items-center gap-2.5 transition-all hover:scale-105 shadow-lg shadow-orange-200 hover:shadow-xl"
         >
-          <Sparkles className="w-5 h-5" />
-          {generating ? "Генерирую..." : "Сгенерировать обед"}
+          <Sparkles className={`w-5 h-5 ${generating ? "animate-spin" : ""}`} />
+          {generating ? "Подбираю рецепт..." : "Сгенерировать обед"}
         </button>
-        {error && <p className="mt-4 text-red-500 text-sm">{error}</p>}
       </div>
 
       {/* Filters */}
@@ -169,7 +297,7 @@ export default function App() {
       <div className="px-6 pb-8">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-medium text-foreground">Недавние идеи</h3>
-          <button className="text-[#E8672A] text-sm font-medium hover:opacity-75">Посмотреть все</button>
+          <span className="text-[#E8672A] text-sm font-medium">{recipes.length} рецептов</span>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {recipes.map((recipe, i) => (
